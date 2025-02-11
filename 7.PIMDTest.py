@@ -3,7 +3,8 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from PIL import Image
 from torch.utils.data import DataLoader
-from PIMDTrain import CNN, ImageFolder, data_aug
+from torchvision import models
+from PIMDTrain import data_aug, ImageFolder
 from tqdm import tqdm
 import json
 import os
@@ -18,8 +19,25 @@ else:
 def main() -> None:
     ruta_guardado = r'Scripts\Rama1\EjericiosPrácticos\5.TodoJunto\CNN\Pesos\PIMD.pth' # ruta donde estan los pesos del modelo
     transform = data_aug()
-    model = CNN().to(device) # cargamos la arquitectura del modelo
-    model.load_state_dict(torch.load(ruta_guardado)) # se cargan los pesos
+    def configuracion_modelo(model: models.resnet18, out_features: int):
+        for param in model.parameters():
+            param.require_grad = False
+        in_features = model.fc.in_features
+        model.fc = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.Sigmoid()  # Añadir la capa sigmoide aquí
+        )
+        return model
+
+    # Cargar el modelo previamente entrenado
+
+    model = models.resnet18(pretrained=False)  # Asegúrate de que la arquitectura coincida con la entrenada
+    model = configuracion_modelo(model, 1)
+
+    # Cargar los pesos
+    model.load_state_dict(torch.load(r"Scripts\Rama1\EjericiosPrácticos\5.TodoJunto\CNN\Pesos\PIMD.pth", map_location=device))
+    model.to(device)
+    model.eval()
     loss_funct = nn.BCELoss() # funcion de pérdida
     #Datos de testing
     ruta_data = r'Scripts\Rama1\EjericiosPrácticos\5.TodoJunto\CNN\Data\ExpresionesDeEstres\KDEF\KDEF\Test'
